@@ -30,6 +30,9 @@ pub(crate) struct CompileCommand {
 
     #[arg(long, value_enum, default_value = "info")]
     pub log_level: LevelFilter,
+
+    #[arg(long, num_args = 0..)]
+    pub log_target: Vec<String>,
 }
 
 /// LSP

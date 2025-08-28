@@ -48,3 +48,19 @@ pub fn hash<T: Hash + 'static>(value: &T) -> u64 {
     value.hash(&mut s);
     s.finish()
 }
+
+pub fn tree_prefix(depth: usize) -> &'static str {
+    match depth {
+        0 => "",
+        1 => "├──",
+        2 => "│  ├──",
+        3 => "│  │  ├──",
+        4 => "│  │  │  ├──",
+        5 => "│  │  │  │  ├──",
+        6 => "│  │  │  │  │  ├──",
+        7 => "│  │  │  │  │  │  ├──",
+        8 => "│  │  │  │  │  │  │  ├──",
+        9 => "│  │  │  │  │  │  │  │  ├──",
+        _ => "│  │  │  │  │  │  │  │..├──",
+    }
+}

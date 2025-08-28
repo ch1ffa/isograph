@@ -12,6 +12,7 @@ pub(crate) fn memo_macro(_args: TokenStream, item: TokenStream) -> TokenStream {
         attrs,
     } = parse_macro_input!(item as ItemFn);
 
+    let fn_name = &sig.ident.to_string();
     let fn_hash = hash(&sig);
 
     if sig.inputs.is_empty() {
@@ -117,6 +118,9 @@ pub(crate) fn memo_macro(_args: TokenStream, item: TokenStream) -> TokenStream {
     let output = quote! {
         #(#attrs)*
         #vis #new_sig {
+            use ::pico::Database;
+            use colored::Colorize;
+            ::tracing::debug!(target: "pico", "{}{}: started revalidating", ::pico::macro_fns::tree_prefix(#db_arg.get_storage().dependency_stack_len()), #fn_name);
             let mut param_ids = ::pico::macro_fns::init_param_vec();
             #(
                 #param_ids_blocks
@@ -138,6 +142,11 @@ pub(crate) fn memo_macro(_args: TokenStream, item: TokenStream) -> TokenStream {
                 !matches!(did_recalculate, pico::DidRecalculate::Error),
                 "Unexpected memo result. This is indicative of a bug in Pico."
             );
+            match did_recalculate {
+                pico::DidRecalculate::Recalculated => ::tracing::debug!(target: "pico", "{}{}: {}", ::pico::macro_fns::tree_prefix(#db_arg.get_storage().dependency_stack_len()), #fn_name, "not up-to-date, recalculated".yellow()),
+                pico::DidRecalculate::ReusedMemoizedValue => ::tracing::debug!(target: "pico", "{}{}: {}", ::pico::macro_fns::tree_prefix(#db_arg.get_storage().dependency_stack_len()), #fn_name, "determined to be up-to-date".green()),
+                _ => {},
+            }
             ::pico::MemoRef::new(#db_arg, derived_node_id)
         }
     };

@@ -921,6 +921,7 @@ dependencies = [
 name = "graphql_network_protocol"
 version = "0.3.1"
 dependencies = [
+ "colored",
  "common_lang_types",
  "graphql_lang_types",
  "graphql_schema_parser",
@@ -934,6 +935,7 @@ dependencies = [
  "pico",
  "pico_macros",
  "thiserror",
+ "tracing",
 ]
 
 [[package]]
@@ -1427,6 +1429,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tokio",
+ "tracing",
  "url",
 ]
 
@@ -1434,6 +1437,7 @@ dependencies = [
 name = "isograph_schema"
 version = "0.3.1"
 dependencies = [
+ "colored",
  "colorize",
  "common_lang_types",
  "graphql_lang_types",
@@ -1446,6 +1450,7 @@ dependencies = [
  "pico_macros",
  "serde",
  "thiserror",
+ "tracing",
 ]
 
 [[package]]
@@ -1924,6 +1929,7 @@ name = "pico"
 version = "0.3.1"
 dependencies = [
  "boxcar",
+ "colored",
  "dashmap",
  "intern",
  "lru",

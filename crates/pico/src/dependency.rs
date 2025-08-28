@@ -53,6 +53,10 @@ impl DependencyStack {
         Self(RefCell::new(Vec::new()))
     }
 
+    pub fn len(&self) -> usize {
+        self.0.borrow().len()
+    }
+
     pub fn enter(&self, derived_node_id: DerivedNodeId) -> DependencyStackGuard<'_> {
         self.assert_no_cycles(derived_node_id);
 

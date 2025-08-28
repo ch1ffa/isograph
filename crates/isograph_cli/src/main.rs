@@ -7,9 +7,14 @@ use graphql_network_protocol::GraphQLNetworkProtocol;
 use intern::string_key::Intern;
 use isograph_compiler::{compile_and_print, handle_watch_command};
 use opt::{Command, CompileCommand, LspCommand, Opt};
-use std::io;
+use std::{io, iter};
 use tracing::{error, info, level_filters::LevelFilter};
-use tracing_subscriber::fmt::format::FmtSpan;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{
+    fmt::{self, format::FmtSpan},
+    layer::SubscriberExt,
+    EnvFilter,
+};
 
 #[tokio::main]
 async fn main() {
@@ -30,7 +35,7 @@ async fn start_compiler(
     compile_command: CompileCommand,
     current_working_directory: CurrentWorkingDirectory,
 ) {
-    configure_logger(compile_command.log_level);
+    configure_logger(compile_command.log_level, &compile_command.log_target);
     let config_location = compile_command
         .config
         .unwrap_or("./isograph.config.json".into());
@@ -83,24 +88,28 @@ async fn start_language_server(
     }
 }
 
-fn configure_logger(log_level: LevelFilter) {
-    let mut collector = tracing_subscriber::fmt()
+fn configure_logger(global_level: LevelFilter, target_overrides: &[String]) {
+    let filter = iter::once(global_level.to_string())
+        .chain(target_overrides.iter().cloned())
+        .collect::<Vec<_>>()
+        .join(",");
+    let env_filter = EnvFilter::new(filter);
+    let fmt_layer = fmt::layer()
         .pretty()
+        .compact()
         .without_time()
-        .with_max_level(log_level)
         .with_writer(io::stderr);
-    match log_level {
-        LevelFilter::DEBUG | LevelFilter::TRACE => {
-            collector = collector.with_span_events(FmtSpan::FULL);
-        }
-        _ => {
-            collector = collector
-                .with_file(false)
-                .with_line_number(false)
-                .with_target(false);
-        }
-    }
-    collector.init();
+    let fmt_layer = match global_level {
+        LevelFilter::DEBUG | LevelFilter::TRACE => fmt_layer.with_span_events(FmtSpan::FULL),
+        _ => fmt_layer
+            .with_file(false)
+            .with_line_number(false)
+            .with_target(false),
+    };
+    tracing_subscriber::registry()
+        .with(env_filter)
+        .with(fmt_layer)
+        .init();
 }
 
 fn current_working_directory() -> CurrentWorkingDirectory {

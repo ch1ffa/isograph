@@ -1,4 +1,6 @@
+use colored::Colorize;
 use dashmap::Entry;
+use tracing::trace;
 
 use crate::{
     dependency::{NodeKind, TrackedDependencies},
@@ -6,6 +8,7 @@ use crate::{
     dyn_eq::DynEq,
     epoch::Epoch,
     intern::Key,
+    macro_fns::tree_prefix,
     Database, InnerFn,
 };
 
@@ -67,33 +70,37 @@ pub fn execute_memoized_function<Db: Database>(
         db.get_storage().top_level_calls.push(derived_node_id);
     }
 
-    let (time_updated, did_recalculate) =
-        if let Some(derived_node) = db.get_storage().internal.get_derived_node(derived_node_id) {
-            if db
-                .get_storage()
+    let (time_updated, did_recalculate) = if let Some(derived_node) =
+        db.get_storage().internal.get_derived_node(derived_node_id)
+    {
+        if db
+            .get_storage()
+            .internal
+            .node_verified_in_current_epoch(derived_node_id)
+        {
+            trace!(target: "pico", "{}···{}", tree_prefix(db.get_storage().dependency_stack_len()), "same epoch, up-to-date".green());
+            (
+                db.get_storage().internal.current_epoch,
+                DidRecalculate::ReusedMemoizedValue,
+            )
+        } else {
+            db.get_storage()
                 .internal
-                .node_verified_in_current_epoch(derived_node_id)
-            {
+                .verify_derived_node(derived_node_id);
+            if any_dependency_changed(db, derived_node) {
+                trace!(target: "pico", "{}···{}", tree_prefix(db.get_storage().dependency_stack_len()), "dependency changed, recalculating".yellow());
+                update_derived_node(db, derived_node_id, derived_node.value.as_ref(), inner_fn)
+            } else {
                 (
                     db.get_storage().internal.current_epoch,
                     DidRecalculate::ReusedMemoizedValue,
                 )
-            } else {
-                db.get_storage()
-                    .internal
-                    .verify_derived_node(derived_node_id);
-                if any_dependency_changed(db, derived_node) {
-                    update_derived_node(db, derived_node_id, derived_node.value.as_ref(), inner_fn)
-                } else {
-                    (
-                        db.get_storage().internal.current_epoch,
-                        DidRecalculate::ReusedMemoizedValue,
-                    )
-                }
             }
-        } else {
-            create_derived_node(db, derived_node_id, inner_fn)
-        };
+        }
+    } else {
+        trace!(target: "pico", "{}···{}", tree_prefix(db.get_storage().dependency_stack_len()), "creating a new node".yellow());
+        create_derived_node(db, derived_node_id, inner_fn)
+    };
     db.get_storage().register_dependency_in_parent_memoized_fn(
         NodeKind::Derived(derived_node_id),
         time_updated,
@@ -147,9 +154,11 @@ fn update_derived_node<Db: Database>(
             };
 
             let did_recalculate = if *prev_value != *value {
+                trace!(target: "pico", "{}···{}", tree_prefix(db.get_storage().dependency_stack_len()), "recalcualted, got new value".yellow());
                 occupied.get_mut().time_updated = tracked_dependencies.max_time_updated;
                 DidRecalculate::Recalculated
             } else {
+                trace!(target: "pico", "{}···{}", tree_prefix(db.get_storage().dependency_stack_len()), "value didn't changed, up-to-date".cyan());
                 DidRecalculate::ReusedMemoizedValue
             };
 

@@ -179,6 +179,10 @@ impl<Db: Database> Storage<Db> {
             "Cannot modify database while a memoized function is being invoked."
         );
     }
+
+    pub fn dependency_stack_len(&self) -> usize {
+        self.dependency_stack.len()
+    }
 }
 
 impl<Db: Database> InternalStorage<Db> {

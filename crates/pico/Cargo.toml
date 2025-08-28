@@ -17,3 +17,4 @@ serde_derive = { workspace = true }
 thiserror = { workspace = true }
 tinyvec = { workspace = true, features = ["serde"] }
 tracing = { workspace = true }
+colored = { workspace = true }
